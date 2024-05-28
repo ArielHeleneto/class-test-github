@@ -42,11 +42,11 @@ jobs:
         sudo -E apt-get -qq install -y build-essential
 
     - name: Build Code
-      id: bcode-${{ matrix.codename }}
+      id: bcode
       run: gcc exercises/${{ matrix.codename }}.c -o ${{ matrix.codename }}.exe -Wall -Wextra -std=c99 -lm 2>&1 | tee build.log
 
     - name: Run Code
-      id: rcode-${{ matrix.codename }}
+      id: rcode
       run: ${{ matrix.codename }}.exe 2>&1 | tee output.log
 
     - name: Upload Log
@@ -58,15 +58,15 @@ jobs:
           ${{ github.workspace }}/*.log
     
     - name: Check Output
-      id: cout-${{ matrix.codename }}
+      id: cout
       run: |
-        expected=$$(cat test/${{ matrix.codename }}.out)
-        actual=$$(cat output.log)
-        if $expected == $actual; then \
-          exit 0
-        else
-          exit 1
-        fi
+        expected=$$(cat test/${{ matrix.codename }}.out); \
+    	  actual=$$(cat output.log); \
+    	  if [ "$$expected" = "$$actual" ]; then \
+          	echo "${{ matrix.codename }}=1" >> "$GITHUB_OUTPUT"
+    	  else \
+          	echo "${{ matrix.codename }}=0" >> "$GITHUB_OUTPUT"
+    	  fi; 
     
     - name: Output Success Summary
       run: |
@@ -98,7 +98,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
     
     - name: Build Failed Summary
-      if: ${{ !cancelled() && !success() && steps.bcode-${{ matrix.codename }}.outcome=='failure' }}
+      if: ${{ !cancelled() && !success() && steps.bcode.outcome=='failure' }}
       run: |
         echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -122,7 +122,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
 
     - name: Run Failed Summary
-      if: ${{ !cancelled() && !success() && steps.rcode-${{ matrix.codename }}.outcome=='failure' }}
+      if: ${{ !cancelled() && !success() && steps.rcode.outcome=='failure' }}
       run: |
         echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -152,7 +152,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
 
     - name: Diff Failed Summary
-      if: ${{ !cancelled() && !success() && steps.cout-${{ matrix.codename }}.outcome=='failure' }}
+      if: ${{ !cancelled() && !success() && steps.cout.outputs.${{ matrix.codename }}=='0' }}
       run: |
         echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -194,31 +194,31 @@ jobs:
     
     - name: Check Score
       env:
-        OUTPUT1: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
-        OUTPUT2: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
-        OUTPUT3: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
-        OUTPUT4: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
-        OUTPUT5: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
+        OUTPUT1: ${{ needs.testcode.cout.outputs.01_helloworld}}
+        OUTPUT2: ${{ needs.testcode.cout.outputs.02_loop }}
+        OUTPUT3: ${{ needs.testcode.cout.outputs.03_nested_loops }}
+        OUTPUT4: ${{ needs.testcode.cout.outputs.04_prime_number }}
+        OUTPUT5: ${{ needs.testcode.cout.outputs.05_josephus_ring }}
       run: |
         score=0
-        if $OUTPUT1 == 'success'; then \
+        if $OUTPUT1 == '1'; then \
           score=score+1 \
         fi
-        if $OUTPUT2 == 'success'; then \
+        if $OUTPUT2 == '1'; then \
           score=score+1 \
         fi
-        if $OUTPUT3 == 'success'; then \
+        if $OUTPUT3 == '1'; then \
           score=score+1 \
         fi
-        if $OUTPUT4 == 'success'; then \
+        if $OUTPUT4 == '1'; then \
           score=score+1 \
         fi
-        if $OUTPUT5 == 'success'; then \
+        if $OUTPUT5 == '1'; then \
           score=score+1 \
         fi
     
     - name: Upload Score
-      if: ${{ uploadscore == true }}
+      if: ${{ inputs.uploadscore == true }}
       run: |
         curl -X POST https://api.learningcamp.cn/web/api/courseRank/createByThird -H 'accept: application/json;charset=utf-8' -H 'Content-Type: application/json' -d '{ \
         "channel": "github", \
