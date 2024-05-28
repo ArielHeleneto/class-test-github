@@ -194,7 +194,7 @@ jobs:
     
     - name: Check Score
       env:
-        OUTPUT1: ${{ needs.testcode.cout.outputs.01_helloworld}}
+        OUTPUT1: ${{ needs.testcode.cout.outputs.01_helloworld }}
         OUTPUT2: ${{ needs.testcode.cout.outputs.02_loop }}
         OUTPUT3: ${{ needs.testcode.cout.outputs.03_nested_loops }}
         OUTPUT4: ${{ needs.testcode.cout.outputs.04_prime_number }}
