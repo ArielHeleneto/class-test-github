@@ -1,0 +1,239 @@
+name: Test Your Code
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      # giteeID:
+      #   description: 'Input your Gitee ID (Default: your GitHub ID)'
+      #   type: string
+      #   required: false
+      uploadscore:
+        description: 'Check it to upload your score (Default: false)'
+        type: boolean
+        required: true
+        default: false
+
+
+jobs:
+  testcode:
+    strategy:
+      fail-fast: false
+      matrix:
+        codename: ['01_helloworld','02_loop','03_nested_loops','04_prime_number','05_josephus_ring']
+    runs-on: ubuntu-latest
+    name: Test Coded for ${{ matrix.codename }}
+    continue-on-error: true
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@main
+        
+    - name: Check Commit ID
+      id: truecommit
+      run: |
+        echo "shortid=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        echo "longid=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        echo "$(git log -1)" >> ${{ github.workspace }}/message.log
+
+    - name: Initialization environment
+      run: |
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install -y build-essential
+
+    - name: Build Code
+      id: bcode-${{ matrix.codename }}
+      run: gcc exercises/${{ matrix.codename }}.c -o ${{ matrix.codename }}.exe -Wall -Wextra -std=c99 -lm 2>&1 | tee build.log
+
+    - name: Run Code
+      id: rcode-${{ matrix.codename }}
+      run: ${{ matrix.codename }}.exe 2>&1 | tee output.log
+
+    - name: Upload Log
+      uses: actions/upload-artifact@main
+      if: ${{ !cancelled() }}
+      with:
+        name: ${{ matrix.codename }}-Log
+        path: |
+          ${{ github.workspace }}/*.log
+    
+    - name: Check Output
+      id: cout-${{ matrix.codename }}
+      run: |
+        expected=$$(cat test/${{ matrix.codename }}.out); \
+    	  actual=$$(cat output.log); \
+    	  if [ "$$expected" = "$$actual" ]; then \
+          	exit 0\
+    	  else \
+          	exit 1 \
+    	  fi; 
+    
+    - name: Output Success Summary
+      run: |
+        echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "[CI #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) powered by [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}) has check your code for ${{ matrix.codename }}. Your code for ${{ matrix.codename }} has passed check." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Commit Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "CI has built on commit [${{ steps.truecommit.outputs.shortid }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.truecommit.outputs.longid }}). The commit message is shown below." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        cat ${{ github.workspace }}/message.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Last 100 Lines of Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        tail -100 build.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Last 100 Lines of your output." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        tail -100 output.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Build Failed Summary
+      if: ${{ !cancelled() && !success() && steps.bcode-${{ matrix.codename }}.outcome=='failure' }}
+      run: |
+        echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "[CI #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) powered by [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}) has check your code for ${{ matrix.codename }}. System can build your code for ${{ matrix.codename }}. However it cannot run your code." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Commit Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "CI has built on commit [${{ steps.truecommit.outputs.shortid }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.truecommit.outputs.longid }}). The commit message is shown below." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        cat ${{ github.workspace }}/message.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Last 100 Lines of Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        tail -100 build.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+    - name: Run Failed Summary
+      if: ${{ !cancelled() && !success() && steps.rcode-${{ matrix.codename }}.outcome=='failure' }}
+      run: |
+        echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "[CI #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) powered by [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}) has check your code for ${{ matrix.codename }}. System cannot build your code for ${{ matrix.codename }}." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Commit Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "CI has built on commit [${{ steps.truecommit.outputs.shortid }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.truecommit.outputs.longid }}). The commit message is shown below." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        cat ${{ github.workspace }}/message.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Last 100 Lines of Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        tail -100 build.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Last 100 Lines of your output." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        tail -100 output.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+    - name: Diff Failed Summary
+      if: ${{ !cancelled() && !success() && steps.cout-${{ matrix.codename }}.outcome=='failure' }}
+      run: |
+        echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "[CI #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) powered by [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}) has check your code for ${{ matrix.codename }}. Output from your code for ${{ matrix.codename }} is wrong." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Commit Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "CI has built on commit [${{ steps.truecommit.outputs.shortid }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.truecommit.outputs.longid }}). The commit message is shown below." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        cat ${{ github.workspace }}/message.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Last 100 Lines of Build Log" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        tail -100 build.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Last 100 Lines of your output." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        tail -100 output.log >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+  
+  judgescore:
+    needs: testcode
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    name: Check Your Score
+    continue-on-error: true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+    
+    - name: Check Score
+      env:
+        OUTPUT1: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
+        OUTPUT2: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
+        OUTPUT3: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
+        OUTPUT4: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
+        OUTPUT5: ${{ needs.testcode.cout-${{ matrix.codename }}.outcome }}
+      run: |
+        score=0
+        if $OUTPUT1 == 'success'; then \
+          score=score+1 \
+        fi
+        if $OUTPUT2 == 'success'; then \
+          score=score+1 \
+        fi
+        if $OUTPUT3 == 'success'; then \
+          score=score+1 \
+        fi
+        if $OUTPUT4 == 'success'; then \
+          score=score+1 \
+        fi
+        if $OUTPUT5 == 'success'; then \
+          score=score+1 \
+        fi
+    
+    - name: Upload Score
+      if: ${{ uploadscore == true }}
+      run: |
+        curl -X POST https://api.learningcamp.cn/web/api/courseRank/createByThird -H 'accept: application/json;charset=utf-8' -H 'Content-Type: application/json' -d '{ \
+        "channel": "github", \
+        "courseId": 1558, \
+        "ext": "aaa", \
+        "name": "${{ github.actor }}", \
+        "score": $score, \
+        "totalScore": 5 \
+        }' -v 
+    
+    - name: Output Report
+      if: ${{ uploadscore == true }}
+      run: |
+        echo "# Score Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "[CI #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) powered by [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }}) has check your code. You won $score score(s)." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
