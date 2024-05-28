@@ -60,12 +60,12 @@ jobs:
     - name: Check Output
       id: cout
       run: |
-        expected=$$(cat test/${{ matrix.codename }}.out); \
-        actual=$$(cat output.log); \
+        expected=$$(cat test/${{ matrix.codename }}.out);
+        actual=$$(cat output.log);
         if [ "$$expected" = "$$actual" ]; then \
-            echo "${{ matrix.codename }}=1" >> "$GITHUB_OUTPUT"
+            echo "${{ matrix.codename }}=1" >> "$GITHUB_OUTPUT"; exit 1; \
         else \
-            echo "${{ matrix.codename }}=0" >> "$GITHUB_OUTPUT"
+            echo "${{ matrix.codename }}=0" >> "$GITHUB_OUTPUT"; exit 1; \
         fi; 
     
     - name: Output Success Summary
@@ -152,7 +152,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
 
     - name: Diff Failed Summary
-      if: ${{ !cancelled() && !success() && steps.cout.outputs.(matrix.codename)=='0' }}
+      if: ${{ !cancelled() && !success() && steps.cout.outcome=='failure' }}
       run: |
         echo "# Problem ${{ matrix.codename }} Check Report" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
