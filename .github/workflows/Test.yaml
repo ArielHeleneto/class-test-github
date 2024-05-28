@@ -61,12 +61,12 @@ jobs:
       id: cout
       run: |
         expected=$$(cat test/${{ matrix.codename }}.out); \
-    	  actual=$$(cat output.log); \
-    	  if [ "$$expected" = "$$actual" ]; then \
-          	echo "${{ matrix.codename }}=1" >> "$GITHUB_OUTPUT"
-    	  else \
-          	echo "${{ matrix.codename }}=0" >> "$GITHUB_OUTPUT"
-    	  fi; 
+        actual=$$(cat output.log); \
+        if [ "$$expected" = "$$actual" ]; then \
+            echo "${{ matrix.codename }}=1" >> "$GITHUB_OUTPUT"
+        else \
+            echo "${{ matrix.codename }}=0" >> "$GITHUB_OUTPUT"
+        fi; 
     
     - name: Output Success Summary
       run: |
