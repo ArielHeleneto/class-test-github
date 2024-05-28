@@ -60,13 +60,13 @@ jobs:
     - name: Check Output
       id: cout-${{ matrix.codename }}
       run: |
-        expected=$$(cat test/${{ matrix.codename }}.out); \
-    	  actual=$$(cat output.log); \
-    	  if [ "$$expected" = "$$actual" ]; then \
-          	exit 0\
-    	  else \
-          	exit 1 \
-    	  fi; 
+        expected=$$(cat test/${{ matrix.codename }}.out)
+        actual=$$(cat output.log)
+        if $expected == $actual; then \
+          exit 0
+        else
+          exit 1
+        fi
     
     - name: Output Success Summary
       run: |
